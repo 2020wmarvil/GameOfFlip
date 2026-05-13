@@ -7,8 +7,9 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { filterTricks, TIERS } from '../data/tricks';
+import { TIERS } from '../data/tricks';
 import { useMatch } from '../store/MatchContext';
+import { useTrickLibrary } from '../store/TrickLibraryContext';
 import { colors, fonts } from '../theme/tokens';
 import { XIcon } from '../ui/Icon';
 import { StampLabel } from '../ui/StampLabel';
@@ -21,7 +22,8 @@ type Props = {
 
 export function MatchSettings({ visible, onClose }: Props) {
   const { state, dispatch } = useMatch();
-  const poolCount = filterTricks(state.tiers).length;
+  const library = useTrickLibrary();
+  const poolCount = library.filter((t) => state.tiers.includes(t.tier)).length;
 
   return (
     <Modal

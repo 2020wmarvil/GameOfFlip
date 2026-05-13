@@ -10,6 +10,7 @@ import { MatchScreen } from './src/screens/MatchScreen';
 import { SetupScreen } from './src/screens/SetupScreen';
 import { TrickPicker } from './src/screens/TrickPicker';
 import { MatchProvider, useMatch } from './src/store/MatchContext';
+import { TrickLibraryProvider } from './src/store/TrickLibraryContext';
 import { colors } from './src/theme/tokens';
 import { GrainLayer } from './src/ui/GrainLayer';
 
@@ -41,11 +42,13 @@ export default function App() {
       {/* Paper bg lives outside MatchProvider so it covers the brief
           hydration window where the provider renders nothing. */}
       <View style={{ flex: 1, backgroundColor: colors.paper }}>
-        <MatchProvider>
-          <ActiveScreen />
-          <GrainLayer />
-          <TrickPicker />
-        </MatchProvider>
+        <TrickLibraryProvider>
+          <MatchProvider>
+            <ActiveScreen />
+            <GrainLayer />
+            <TrickPicker />
+          </MatchProvider>
+        </TrickLibraryProvider>
       </View>
       <StatusBar style="light" />
     </SafeAreaProvider>

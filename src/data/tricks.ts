@@ -4,7 +4,10 @@ export type Trick = { name: string; tier: Tier };
 
 export const TIERS: Tier[] = ['beginner', 'intermediate', 'advanced', 'pro'];
 
-export const TRICKS: Trick[] = [
+// Bundled fallback library — shipped with the app so the first launch
+// works offline even before the remote sheet has been fetched, and so a
+// remote-fetch failure with no cache still has tricks to roll.
+export const DEFAULT_TRICKS: Trick[] = [
   { name: 'Seat Drop', tier: 'beginner' },
   { name: 'Hands & Knees', tier: 'beginner' },
   { name: 'Back Drop', tier: 'beginner' },
@@ -58,9 +61,22 @@ export const TRICKS: Trick[] = [
   { name: 'Triple-Twisting Double', tier: 'pro' },
 ];
 
+// Mutable active library — replaced by TrickLibraryProvider when a cached
+// or remote library loads. The reducer's pure helpers read from here so
+// they don't need to know about React context.
+let _active: Trick[] = DEFAULT_TRICKS.slice();
+
+export function getActiveLibrary(): Trick[] {
+  return _active;
+}
+
+export function setActiveLibrary(arr: Trick[]): void {
+  _active = arr.slice();
+}
+
 export function filterTricks(tiers: Tier[] | undefined | null): Trick[] {
-  if (!tiers || !tiers.length) return TRICKS.slice();
-  return TRICKS.filter((t) => tiers.includes(t.tier));
+  if (!tiers || !tiers.length) return _active.slice();
+  return _active.filter((t) => tiers.includes(t.tier));
 }
 
 export function randomTrick(pool: Trick[], excludeName?: string): Trick {

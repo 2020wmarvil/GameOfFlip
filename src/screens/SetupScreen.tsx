@@ -8,8 +8,9 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TIERS, filterTricks } from '../data/tricks';
+import { TIERS } from '../data/tricks';
 import { useMatch } from '../store/MatchContext';
+import { useTrickLibrary } from '../store/TrickLibraryContext';
 import { colors, fonts } from '../theme/tokens';
 import { ChunkyBtn } from '../ui/ChunkyBtn';
 import { BackIcon, PlusIcon, XIcon } from '../ui/Icon';
@@ -20,6 +21,8 @@ const MAX_PLAYERS = 12;
 
 export function SetupScreen() {
   const { state, dispatch } = useMatch();
+  const library = useTrickLibrary();
+  const poolCount = library.filter((t) => state.tiers.includes(t.tier)).length;
   const canStart = state.players.length >= 2;
 
   return (
@@ -86,7 +89,7 @@ export function SetupScreen() {
         <Section
           num="03"
           label="DIFFICULTY POOL"
-          meta={`${filterTricks(state.tiers).length} tricks`}
+          meta={`${poolCount} tricks`}
         >
           <View style={styles.tierGrid}>
             {TIERS.map((tier) => (

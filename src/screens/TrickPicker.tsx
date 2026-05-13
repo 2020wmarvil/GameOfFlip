@@ -9,8 +9,9 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { filterTricks, type Trick } from '../data/tricks';
+import { type Trick } from '../data/tricks';
 import { useMatch } from '../store/MatchContext';
+import { useTrickLibrary } from '../store/TrickLibraryContext';
 import { colors, fonts } from '../theme/tokens';
 import { XIcon } from '../ui/Icon';
 import { StampLabel } from '../ui/StampLabel';
@@ -20,7 +21,11 @@ export function TrickPicker() {
   const { state, dispatch } = useMatch();
   const [search, setSearch] = useState('');
 
-  const pool = useMemo(() => filterTricks(state.tiers), [state.tiers]);
+  const library = useTrickLibrary();
+  const pool = useMemo(
+    () => library.filter((t) => state.tiers.includes(t.tier)),
+    [library, state.tiers],
+  );
   const q = search.trim().toLowerCase();
   const filtered = q
     ? pool.filter((tr) => tr.name.toLowerCase().includes(q))
