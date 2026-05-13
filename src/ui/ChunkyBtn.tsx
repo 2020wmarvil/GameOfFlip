@@ -72,7 +72,12 @@ export function ChunkyBtn({
           alignItems: 'center',
           justifyContent: 'center',
           opacity: disabled ? 0.4 : 1,
-          transform: pressed ? [{ translateX: s.offset }, { translateY: s.offset }] : undefined,
+          // Always supply a transform array — going from a defined array
+          // to undefined causes RN's prop differ to call _validateTransforms(null).
+          transform: [
+            { translateX: pressed ? s.offset : 0 },
+            { translateY: pressed ? s.offset : 0 },
+          ],
         }}
       >
         {typeof children === 'string' ? (
