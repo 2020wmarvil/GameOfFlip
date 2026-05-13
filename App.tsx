@@ -38,14 +38,16 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <MatchProvider>
-        <View style={{ flex: 1, backgroundColor: colors.paper }}>
+      {/* Paper bg lives outside MatchProvider so it covers the brief
+          hydration window where the provider renders nothing. */}
+      <View style={{ flex: 1, backgroundColor: colors.paper }}>
+        <MatchProvider>
           <ActiveScreen />
           <GrainLayer />
-        </View>
-        <TrickPicker />
-        <StatusBar style="light" />
-      </MatchProvider>
+          <TrickPicker />
+        </MatchProvider>
+      </View>
+      <StatusBar style="light" />
     </SafeAreaProvider>
   );
 }

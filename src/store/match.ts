@@ -55,7 +55,8 @@ export type Action =
   | { type: 'CLEAR_RESULT'; id: string }
   | { type: 'NEXT_ROUND' }
   | { type: 'REMATCH' }
-  | { type: 'HOME' };
+  | { type: 'HOME' }
+  | { type: 'HYDRATE'; state: State };
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 
@@ -278,6 +279,11 @@ export function reducer(s: State, a: Action): State {
 
     case 'HOME':
       return { ...initialState, players: s.players };
+
+    case 'HYDRATE':
+      // Replace state wholesale from persisted snapshot. The picker is
+      // force-closed so users don't restore into a half-open modal.
+      return { ...a.state, trickPickerOpen: false };
 
     default:
       return s;
