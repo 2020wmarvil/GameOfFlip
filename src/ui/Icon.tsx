@@ -70,3 +70,24 @@ export function CrownIcon({ size = 22, color = '#f6d738' }: IconProps) {
     </Svg>
   );
 }
+
+export function GearIcon({ size = 16, color = '#f4ede0' }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M19.4 13a7.5 7.5 0 0 0 0-2l2-1.6-2-3.4-2.4.8a7.5 7.5 0 0 0-1.8-1L14.6 3h-4l-.6 2.8a7.5 7.5 0 0 0-1.8 1L5.8 6 3.8 9.4 5.8 11a7.5 7.5 0 0 0 0 2L3.8 14.6 5.8 18l2.4-.8a7.5 7.5 0 0 0 1.8 1L10.6 21h4l.6-2.8a7.5 7.5 0 0 0 1.8-1l2.4.8 2-3.4L19.4 13z"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M12.6 14.6a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2z"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}

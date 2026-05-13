@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -15,11 +15,13 @@ import { BigStamp } from '../ui/BigStamp';
 import { ChunkyBtn, type ChunkyVariant } from '../ui/ChunkyBtn';
 import { FlipLetters } from '../ui/FlipLetters';
 import { Halftone } from '../ui/Halftone';
-import { BackIcon, CheckIcon, ReRollIcon, XIcon } from '../ui/Icon';
+import { BackIcon, CheckIcon, GearIcon, ReRollIcon, XIcon } from '../ui/Icon';
 import { TierBadge } from '../ui/TierBadge';
+import { MatchSettings } from './MatchSettings';
 
 export function MatchScreen() {
   const { state, dispatch } = useMatch();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // ─── Derived state ────────────────────────────────────────────────────
   const setter = state.players[state.setterIdx];
@@ -74,6 +76,13 @@ export function MatchScreen() {
         <Pressable style={styles.back} onPress={confirmExit} hitSlop={8}>
           <BackIcon size={18} color={colors.ink} />
         </Pressable>
+        <Pressable
+          style={styles.gear}
+          onPress={() => setSettingsOpen(true)}
+          hitSlop={8}
+        >
+          <GearIcon size={18} color={colors.ink} />
+        </Pressable>
         <View style={styles.headCenter}>
           <Text style={styles.hcMode}>{state.mode === 'addon' ? 'ADD-ON' : 'CLASSIC'}</Text>
           <Text style={styles.hcRound}>RD · {String(state.roundIdx).padStart(2, '0')}</Text>
@@ -85,6 +94,8 @@ export function MatchScreen() {
           </Text>
         </View>
       </View>
+
+      <MatchSettings visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       <ScrollView
         style={{ flex: 1 }}
@@ -582,6 +593,15 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
   back: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.paper2,
+    borderWidth: 1.5,
+    borderColor: colors.rule,
+  },
+  gear: {
     width: 36,
     height: 36,
     alignItems: 'center',

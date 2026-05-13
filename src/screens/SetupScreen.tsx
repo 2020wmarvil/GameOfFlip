@@ -8,12 +8,13 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TIERS, filterTricks, TRICKS, type Tier } from '../data/tricks';
+import { TIERS, filterTricks } from '../data/tricks';
 import { useMatch } from '../store/MatchContext';
-import { colors, fonts, tierColors } from '../theme/tokens';
+import { colors, fonts } from '../theme/tokens';
 import { ChunkyBtn } from '../ui/ChunkyBtn';
 import { BackIcon, PlusIcon, XIcon } from '../ui/Icon';
 import { StampLabel } from '../ui/StampLabel';
+import { TierToggle } from '../ui/TierToggle';
 
 const MAX_PLAYERS = 12;
 
@@ -89,7 +90,7 @@ export function SetupScreen() {
         >
           <View style={styles.tierGrid}>
             {TIERS.map((tier) => (
-              <TierChip
+              <TierToggle
                 key={tier}
                 tier={tier}
                 active={state.tiers.includes(tier)}
@@ -274,42 +275,6 @@ function ModeCard({
   );
 }
 
-function TierChip({
-  tier,
-  active,
-  onPress,
-}: {
-  tier: Tier;
-  active: boolean;
-  onPress: () => void;
-}) {
-  const c = tierColors[tier];
-  const count = TRICKS.filter((t) => t.tier === tier).length;
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[
-        styles.tierChip,
-        active && {
-          backgroundColor: colors.paper3,
-          borderColor: c.bg,
-        },
-      ]}
-    >
-      <View
-        style={[
-          styles.tcDot,
-          { backgroundColor: c.bg, opacity: active ? 1 : 0.45 },
-        ]}
-      />
-      <Text style={[styles.tcLabel, { color: active ? colors.ink : colors.inkMute }]}>
-        {tier}
-      </Text>
-      <Text style={styles.tcCount}>{count}</Text>
-    </Pressable>
-  );
-}
-
 // ─── Styles ──────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
@@ -463,38 +428,11 @@ const styles = StyleSheet.create({
     top: 6,
     right: 6,
   },
-  // Tier chip
+  // Tier chip grid
   tierGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-  },
-  tierChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.paper2,
-    borderWidth: 1.5,
-    borderColor: colors.rule,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    width: '48%',
-  },
-  tcDot: {
-    width: 10,
-    height: 10,
-  },
-  tcLabel: {
-    flex: 1,
-    fontFamily: fonts.bodyBold,
-    fontSize: 12,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
-  tcCount: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 10,
-    color: colors.inkMute,
   },
   // Footer
   cta: {
