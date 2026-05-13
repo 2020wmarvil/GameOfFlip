@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Text as SvgText } from 'react-native-svg';
 import { ChunkyBtn } from '../ui/ChunkyBtn';
@@ -50,7 +50,11 @@ export function HomeScreen() {
   const { state, dispatch } = useMatch();
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <View style={styles.stamps}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.stamps}>
         <StampLabel rotate={-4} size={9}>
           ISSUE №01
         </StampLabel>
@@ -103,9 +107,10 @@ export function HomeScreen() {
         </View>
       </View>
 
-      <View style={styles.credits}>
-        <Text style={styles.creditsText}>v 1.0 · 2-string · last one bouncing wins</Text>
-      </View>
+        <View style={styles.credits}>
+          <Text style={styles.creditsText}>v 1.0 · 2-string · last one bouncing wins</Text>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -131,8 +136,14 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.paper,
+  },
+  // flexGrow: 1 lets the credits' marginTop: 'auto' push them to the
+  // bottom on tall screens; if content overflows, the ScrollView scrolls.
+  scroll: {
+    flexGrow: 1,
     paddingHorizontal: 16,
     paddingTop: 14,
+    paddingBottom: 12,
   },
   stamps: {
     flexDirection: 'row',
