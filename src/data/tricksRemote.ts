@@ -14,7 +14,8 @@ import { TIERS, type Tier, type Trick } from './tricks';
 //
 // Leave the empty string to disable remote fetching (bundled library only).
 
-export const REMOTE_TRICKS_URL = '';
+export const REMOTE_TRICKS_URL =
+  'https://docs.google.com/spreadsheets/d/e/2PACX-1vR7cPCB3e8L0tOh_UuT8J-P_7CNKQtYhPVvNdR4tLmY6rlZ_KaXPLTznGMnJjxL7IQywjr-Q8fBvCbf/pub?output=csv';
 
 // Fetch with a short timeout so a slow / hung network doesn't block startup
 // for too long — the bundled or cached library is already in use by then.
