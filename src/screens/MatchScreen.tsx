@@ -407,23 +407,25 @@ function ResultRow({
   const landed = response === 'landed';
   const missed = response === 'missed';
 
-  // Background tint by result
+  // Opaque tints precomputed as (rgba tint) over paper2. Using opaque colors
+  // matters for the setter row, which sits on top of a solid lime/red shadow
+  // plate — a translucent bg would let the shadow color bleed through.
   let bg: string = colors.paper2;
   let borderColor: string = colors.rule;
   if (isSetter && missed) {
-    bg = 'rgba(255,42,31,0.07)';
+    bg = '#261610';
     borderColor = colors.red;
   } else if (isSetter && landed) {
-    bg = 'rgba(212,255,58,0.12)';
+    bg = '#2d3014';
     borderColor = colors.lime;
   } else if (isSetter) {
-    bg = 'rgba(212,255,58,0.04)';
+    bg = '#1e1d11';
     borderColor = colors.lime;
   } else if (landed) {
-    bg = 'rgba(212,255,58,0.06)';
+    bg = '#212212';
     borderColor = colors.lime;
   } else if (missed) {
-    bg = 'rgba(255,42,31,0.06)';
+    bg = '#241510';
     borderColor = colors.red;
   }
 
