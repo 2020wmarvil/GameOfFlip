@@ -8,6 +8,7 @@ import { GameOverScreen } from './src/screens/GameOverScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { MatchScreen } from './src/screens/MatchScreen';
 import { SetupScreen } from './src/screens/SetupScreen';
+import { TrickPicker } from './src/screens/TrickPicker';
 import { MatchProvider, useMatch } from './src/store/MatchContext';
 import { colors } from './src/theme/tokens';
 import { GrainLayer } from './src/ui/GrainLayer';
@@ -42,6 +43,7 @@ export default function App() {
           <ActiveScreen />
           <GrainLayer />
         </View>
+        <TrickPicker />
         <StatusBar style="light" />
       </MatchProvider>
     </SafeAreaProvider>
