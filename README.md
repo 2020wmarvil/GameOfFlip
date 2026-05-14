@@ -55,25 +55,6 @@ Two modes:
 
 ---
 
-## Vibe
-
-> Gritty backyard zine / skate fanzine. Photocopied feel, bold condensed display type, monospace UI, hot accent colors on a warm near-black. Slight rotations on chips and stamps to break the grid. Chunky offset shadows on primary buttons — 1980s cut-and-paste energy.
-
-| Token | Hex | Used for |
-|---|---|---|
-| `paper` | `#0c0b09` | Base background |
-| `paper-2` | `#16140f` | Card surface |
-| `paper-3` | `#1f1c17` | Active card |
-| `ink` | `#f4ede0` | Primary foreground |
-| `ink-mute` | `#8a8378` | Labels, secondary text |
-| `red` | `#ff2a1f` | Penalty · Classic accent |
-| `lime` | `#d4ff3a` | Landed · Add-On accent |
-| `yellow` | `#f6d738` | Gaffer tape · winner crown |
-
-**Display:** Anton (condensed brutalist sans) · **UI:** Space Mono (caps with wide tracking) · **No border radii** anywhere · **Halftone and film grain** layered for the photocopy feel.
-
----
-
 ## Run it
 
 ```sh
