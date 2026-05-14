@@ -130,6 +130,15 @@ The reducer in `src/store/match.ts` is the source of truth for match state. All 
 
 ---
 
+## Future work
+
+- **Custom tricks** — add your own from inside the app and let them persist alongside the cloud-loaded library. The Sheet is the only way in right now.
+- **Per-match whitelist / blacklist** — narrow a match to a hand-picked subset, or veto specific tricks the room doesn't want. Pool tiers are coarse; this is the surgical version.
+- **Send-It mode** — no setter, no rounds. Random tricks roll in on a timer and you've got `X` seconds to land each one before the next one drops.
+- **Sport profiles** — swap rulesets and trick libraries. **Game of Trick** for tricking (spring floor / grass, kicks and flips). Same scoring loop, different vocabulary and a different loss word.
+
+---
+
 <p align="center">
   <em>v 1.0 · 2-string · last one bouncing wins</em>
 </p>
