@@ -1,0 +1,291 @@
+import { filterTricks, randomTrick, type Tier, type Trick } from '../data/tricks';
+
+export type Mode = 'classic' | 'addon';
+export type Screen = 'home' | 'setup' | 'match' | 'gameover';
+export type Result = 'landed' | 'missed';
+
+export type Player = {
+  id: string;
+  name: string;
+  letters: number;
+  eliminated: boolean;
+  elimRound: number | null;
+};
+
+export type HistoryEntry = {
+  round: number;
+  mode: Mode;
+  trick: Trick[];
+  setFailed: boolean;
+  setterId: string | undefined;
+  results: Array<{ id: string; name: string; result: Result | 'skip' }>;
+};
+
+export type State = {
+  screen: Screen;
+  mode: Mode;
+  tiers: Tier[];
+  word: string;
+  players: Player[];
+  currentTrick: Trick | null;
+  combo: Trick[];
+  roundIdx: number;
+  setterIdx: number;
+  responses: Record<string, Result>;
+  rerollsThisRound: number;
+  winner: Player | null;
+  history: HistoryEntry[];
+  trickPickerOpen: boolean;
+};
+
+export type Action =
+  | { type: 'GOTO'; screen: Screen }
+  | { type: 'ADD_PLAYER'; name: string }
+  | { type: 'REMOVE_PLAYER'; id: string }
+  | { type: 'RENAME_PLAYER'; id: string; name: string }
+  | { type: 'SET_MODE'; mode: Mode }
+  | { type: 'TOGGLE_TIER'; tier: Tier }
+  | { type: 'SET_WORD'; word: string }
+  | { type: 'START_MATCH' }
+  | { type: 'REROLL' }
+  | { type: 'PICK_TRICK'; trick: Trick }
+  | { type: 'OPEN_PICKER' }
+  | { type: 'CLOSE_PICKER' }
+  | { type: 'SET_RESULT'; id: string; result: Result }
+  | { type: 'CLEAR_RESULT'; id: string }
+  | { type: 'NEXT_ROUND' }
+  | { type: 'REMATCH' }
+  | { type: 'HOME' }
+  | { type: 'HYDRATE'; state: State };
+
+const uid = () => Math.random().toString(36).slice(2, 9);
+
+export const initialState: State = {
+  screen: 'home',
+  mode: 'classic',
+  tiers: ['beginner', 'intermediate'],
+  word: 'FLIP',
+  players: [],
+  currentTrick: null,
+  combo: [],
+  roundIdx: 1,
+  setterIdx: 0,
+  responses: {},
+  rerollsThisRound: 0,
+  winner: null,
+  history: [],
+  trickPickerOpen: false,
+};
+
+export function reducer(s: State, a: Action): State {
+  switch (a.type) {
+    case 'GOTO':
+      return { ...s, screen: a.screen };
+
+    case 'ADD_PLAYER': {
+      if (s.players.length >= 12) return s;
+      const name = (a.name || '').trim();
+      if (!name) return s;
+      return {
+        ...s,
+        players: [
+          ...s.players,
+          { id: uid(), name, letters: 0, eliminated: false, elimRound: null },
+        ],
+      };
+    }
+
+    case 'REMOVE_PLAYER':
+      return { ...s, players: s.players.filter((p) => p.id !== a.id) };
+
+    case 'RENAME_PLAYER':
+      return {
+        ...s,
+        players: s.players.map((p) => (p.id === a.id ? { ...p, name: a.name } : p)),
+      };
+
+    case 'SET_MODE':
+      return { ...s, mode: a.mode };
+
+    case 'TOGGLE_TIER': {
+      const has = s.tiers.includes(a.tier);
+      let tiers = has ? s.tiers.filter((t) => t !== a.tier) : [...s.tiers, a.tier];
+      if (!tiers.length) tiers = [a.tier];
+      return { ...s, tiers };
+    }
+
+    case 'SET_WORD':
+      return { ...s, word: a.word };
+
+    case 'START_MATCH': {
+      const pool = filterTricks(s.tiers);
+      const first = randomTrick(pool);
+      return {
+        ...s,
+        screen: 'match',
+        currentTrick: first,
+        combo: [],
+        roundIdx: 1,
+        setterIdx: 0,
+        responses: {},
+        rerollsThisRound: 0,
+        winner: null,
+        history: [],
+        players: s.players.map((p) => ({
+          ...p,
+          letters: 0,
+          eliminated: false,
+          elimRound: null,
+        })),
+      };
+    }
+
+    case 'REROLL': {
+      const pool = filterTricks(s.tiers);
+      const next = randomTrick(pool, s.currentTrick?.name);
+      return {
+        ...s,
+        currentTrick: next,
+        responses: {},
+        rerollsThisRound: s.rerollsThisRound + 1,
+      };
+    }
+
+    case 'PICK_TRICK':
+      return { ...s, currentTrick: a.trick, responses: {}, trickPickerOpen: false };
+
+    case 'OPEN_PICKER':
+      return { ...s, trickPickerOpen: true };
+
+    case 'CLOSE_PICKER':
+      return { ...s, trickPickerOpen: false };
+
+    case 'SET_RESULT':
+      return { ...s, responses: { ...s.responses, [a.id]: a.result } };
+
+    case 'CLEAR_RESULT': {
+      const r = { ...s.responses };
+      delete r[a.id];
+      return { ...s, responses: r };
+    }
+
+    case 'NEXT_ROUND': {
+      const wordLen = s.word.length;
+      const setter = s.players[s.setterIdx];
+      const setterResult = setter ? s.responses[setter.id] : null;
+      const setterLanded = setterResult === 'landed';
+
+      const players = s.players.map((p) => {
+        if (p.eliminated) return p;
+        if (!setterLanded) return p;
+        if (p.id === setter?.id) return p;
+        if (s.responses[p.id] === 'missed') {
+          const letters = p.letters + 1;
+          const eliminated = letters >= wordLen;
+          return {
+            ...p,
+            letters,
+            eliminated,
+            elimRound: eliminated ? s.roundIdx : p.elimRound,
+          };
+        }
+        return p;
+      });
+
+      const nextCombo =
+        s.mode === 'addon' && setterLanded && s.currentTrick
+          ? [...s.combo, s.currentTrick]
+          : s.combo;
+
+      const histTrick: Trick[] =
+        s.mode === 'addon' ? [...nextCombo] : s.currentTrick ? [s.currentTrick] : [];
+      const history: HistoryEntry[] = [
+        ...s.history,
+        {
+          round: s.roundIdx,
+          mode: s.mode,
+          trick: histTrick,
+          setFailed: !setterLanded,
+          setterId: setter?.id,
+          results: s.players
+            .filter((p) => !p.eliminated)
+            .map((p) => ({
+              id: p.id,
+              name: p.name,
+              result:
+                p.id === setter?.id || setterLanded
+                  ? (s.responses[p.id] ?? 'skip')
+                  : 'skip',
+            })),
+        },
+      ];
+
+      const alive = players.filter((p) => !p.eliminated);
+      if (alive.length <= 1) {
+        return {
+          ...s,
+          players,
+          history,
+          combo: nextCombo,
+          winner: alive[0] ?? null,
+          screen: 'gameover',
+        };
+      }
+
+      const aliveIds = alive.map((p) => p.id);
+      const currentSetterId = setter?.id;
+      const curPos = currentSetterId ? aliveIds.indexOf(currentSetterId) : -1;
+      const nextSetterId = aliveIds[(curPos + 1) % aliveIds.length];
+      const nextSetterIdx = players.findIndex((p) => p.id === nextSetterId);
+
+      const pool = filterTricks(s.tiers);
+      const next = randomTrick(pool, s.currentTrick?.name);
+
+      return {
+        ...s,
+        players,
+        history,
+        roundIdx: s.roundIdx + 1,
+        setterIdx: nextSetterIdx,
+        responses: {},
+        rerollsThisRound: 0,
+        currentTrick: next,
+        combo: nextCombo,
+      };
+    }
+
+    case 'REMATCH': {
+      const pool = filterTricks(s.tiers);
+      const first = randomTrick(pool);
+      return {
+        ...s,
+        screen: 'match',
+        currentTrick: first,
+        combo: [],
+        roundIdx: 1,
+        setterIdx: 0,
+        responses: {},
+        rerollsThisRound: 0,
+        winner: null,
+        history: [],
+        players: s.players.map((p) => ({
+          ...p,
+          letters: 0,
+          eliminated: false,
+          elimRound: null,
+        })),
+      };
+    }
+
+    case 'HOME':
+      return { ...initialState, players: s.players };
+
+    case 'HYDRATE':
+      // Replace state wholesale from persisted snapshot. The picker is
+      // force-closed so users don't restore into a half-open modal.
+      return { ...a.state, trickPickerOpen: false };
+
+    default:
+      return s;
+  }
+}
