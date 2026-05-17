@@ -9,8 +9,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TIERS } from '../data/tricks';
-import { useMatch } from '../store/MatchContext';
-import { useTrickLibrary } from '../store/TrickLibraryContext';
+import { useMatch, useSport } from '../store/MatchContext';
+import { useSportTricks } from '../store/TrickLibraryContext';
 import { colors, fonts } from '../theme/tokens';
 import { ChunkyBtn } from '../ui/ChunkyBtn';
 import { BackIcon, PlusIcon, XIcon } from '../ui/Icon';
@@ -21,7 +21,9 @@ const MAX_PLAYERS = 12;
 
 export function SetupScreen() {
   const { state, dispatch } = useMatch();
-  const library = useTrickLibrary();
+  const sport = useSport();
+  const word = sport.word;
+  const library = useSportTricks(sport.id);
   const poolCount = library.filter((t) => state.tiers.includes(t.tier)).length;
   const canStart = state.players.length >= 2;
 
@@ -37,7 +39,7 @@ export function SetupScreen() {
         </Pressable>
         <View style={styles.headerStamp}>
           <StampLabel rotate={-2} size={10}>
-            NEW MATCH · SETUP
+            {sport.label} · NEW MATCH
           </StampLabel>
         </View>
         <View style={{ width: 36 }} />
@@ -117,8 +119,8 @@ export function SetupScreen() {
 
         <Text style={styles.footerNote}>
           WORD TO SPELL:{' '}
-          <Text style={styles.footerWord}>{state.word.split('').join('·')}</Text>
-          {'   '}· {state.word.length} MISSES ELIMINATES
+          <Text style={styles.footerWord}>{word.split('').join('·')}</Text>
+          {'   '}· {word.length} MISSES ELIMINATES
         </Text>
       </ScrollView>
     </SafeAreaView>

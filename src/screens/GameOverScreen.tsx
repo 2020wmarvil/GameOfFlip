@@ -1,14 +1,23 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Player } from '../store/match';
-import { useMatch } from '../store/MatchContext';
+import { useMatch, useSport } from '../store/MatchContext';
 import { colors, fonts } from '../theme/tokens';
 import { ChunkyBtn } from '../ui/ChunkyBtn';
 import { CrownIcon } from '../ui/Icon';
 import { StampLabel } from '../ui/StampLabel';
 
+// The spelled loss word scales down for longer words, same as the home hero.
+const GO_LETTER_SIZE: Record<number, number> = { 4: 78, 5: 64, 6: 56, 7: 50 };
+function goLetterSize(len: number): number {
+  return GO_LETTER_SIZE[len] ?? 50;
+}
+
 export function GameOverScreen() {
   const { state, dispatch } = useMatch();
+  const sport = useSport();
+  const word = sport.word;
+  const letterSize = goLetterSize(word.length);
 
   // Losers most-recently eliminated first, so #02 is the runner-up.
   const losers = [...state.players]
@@ -25,12 +34,17 @@ export function GameOverScreen() {
         </View>
 
         <View style={styles.spelledRow}>
-          {state.word.split('').map((L, i) => (
+          {word.split('').map((L, i) => (
             <Text
               key={i}
               style={[
                 styles.spelledLetter,
-                { transform: [{ rotate: `${i % 2 === 0 ? -3 : 3}deg` }] },
+                {
+                  fontSize: letterSize,
+                  lineHeight: letterSize * 0.85,
+                  color: sport.accent,
+                  transform: [{ rotate: `${i % 2 === 0 ? -3 : 3}deg` }],
+                },
               ]}
             >
               {L}

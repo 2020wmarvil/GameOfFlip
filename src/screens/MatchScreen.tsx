@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Player, Result } from '../store/match';
-import { useMatch } from '../store/MatchContext';
+import { useMatch, useSport } from '../store/MatchContext';
 import { colors, fonts } from '../theme/tokens';
 import { BigStamp } from '../ui/BigStamp';
 import { ChunkyBtn, type ChunkyVariant } from '../ui/ChunkyBtn';
@@ -21,6 +21,8 @@ import { MatchSettings } from './MatchSettings';
 
 export function MatchScreen() {
   const { state, dispatch } = useMatch();
+  const sport = useSport();
+  const word = sport.word;
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // ─── Derived state ────────────────────────────────────────────────────
@@ -112,7 +114,7 @@ export function MatchScreen() {
             <PlayerPill
               key={p.id}
               player={p}
-              word={state.word}
+              word={word}
               isSetter={setter?.id === p.id}
             />
           ))}
@@ -146,7 +148,7 @@ export function MatchScreen() {
           {setter && !setter.eliminated && (
             <ResultRow
               player={setter}
-              word={state.word}
+              word={word}
               response={state.responses[setter.id]}
               isSetter
               disabled={false}
@@ -165,7 +167,7 @@ export function MatchScreen() {
               <ResultRow
                 key={p.id}
                 player={p}
-                word={state.word}
+                word={word}
                 response={state.responses[p.id]}
                 disabled={setterUnresolved}
                 onLand={() => dispatch({ type: 'SET_RESULT', id: p.id, result: 'landed' })}
@@ -238,12 +240,13 @@ function PlayerPill({
 
 function ClassicTrickZone() {
   const { state, dispatch } = useMatch();
+  const sport = useSport();
   const trick = state.currentTrick;
   if (!trick) return null;
   return (
     <View style={styles.tzWrap}>
-      {/* offset red shadow plate */}
-      <View pointerEvents="none" style={[styles.tzShadow, { backgroundColor: colors.red }]} />
+      {/* offset accent shadow plate (Classic = brand chrome) */}
+      <View pointerEvents="none" style={[styles.tzShadow, { backgroundColor: sport.accent }]} />
       <View style={styles.tzInner}>
         <Halftone size={5} opacity={0.18} />
         <View style={styles.tzCorner}>

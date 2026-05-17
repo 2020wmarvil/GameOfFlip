@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useSport } from '../store/MatchContext';
 import { colors, fonts } from '../theme/tokens';
 
 export type ChunkyVariant = 'primary' | 'secondary' | 'success' | 'danger' | 'ghost';
@@ -15,6 +16,8 @@ type Props = {
   style?: StyleProp<ViewStyle>;
 };
 
+// `primary` bg is the per-sport accent — resolved at render. The rest are
+// fixed: success = locked lime, danger = locked red.
 const VARIANTS: Record<ChunkyVariant, { bg: string; fg: string; shadow: string }> = {
   primary: { bg: colors.red, fg: colors.paper, shadow: colors.ink },
   secondary: { bg: colors.paper2, fg: colors.ink, shadow: colors.inkMute },
@@ -40,7 +43,9 @@ export function ChunkyBtn({
   style,
 }: Props) {
   const [pressed, setPressed] = useState(false);
-  const v = VARIANTS[variant];
+  const sport = useSport();
+  const base = VARIANTS[variant];
+  const v = variant === 'primary' ? { ...base, bg: sport.accent } : base;
   const s = SIZES[size];
 
   return (

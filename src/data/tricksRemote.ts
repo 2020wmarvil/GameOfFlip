@@ -2,26 +2,23 @@ import { TIERS, type Tier, type Trick } from './tricks';
 
 // ─── Configuration ──────────────────────────────────────────────────────
 //
-// Paste your Google Sheet's "Publish to web → CSV" URL here.
+// Base URL of the published Google Sheet (File → Share → Publish to web).
+// Each sport's library is a separate tab; we target a tab by its `gid`
+// (see Sport.gid in sports.ts).
 //
-// To set up the sheet:
-//   1. Make a Google Sheet with two columns: `name` and `tier`
-//      (lowercase, in row 1).
-//   2. Fill rows with tricks. `tier` must be one of:
-//      beginner | intermediate | advanced | pro
-//   3. File → Share → Publish to web → choose the tab → format: CSV → Publish.
-//   4. Copy the published URL and replace REMOTE_TRICKS_URL below.
-//
-// Leave the empty string to disable remote fetching (bundled library only).
+// Leave REMOTE_SHEET_BASE empty to disable remote fetching entirely
+// (bundled libraries only).
 
-export const REMOTE_TRICKS_URL =
-  'https://docs.google.com/spreadsheets/d/e/2PACX-1vR7cPCB3e8L0tOh_UuT8J-P_7CNKQtYhPVvNdR4tLmY6rlZ_KaXPLTznGMnJjxL7IQywjr-Q8fBvCbf/pub?output=csv';
+export const REMOTE_SHEET_BASE =
+  'https://docs.google.com/spreadsheets/d/e/2PACX-1vR7cPCB3e8L0tOh_UuT8J-P_7CNKQtYhPVvNdR4tLmY6rlZ_KaXPLTznGMnJjxL7IQywjr-Q8fBvCbf/pub';
 
-// Fetch with a short timeout so a slow / hung network doesn't block startup
-// for too long — the bundled or cached library is already in use by then.
 const FETCH_TIMEOUT_MS = 6000;
 
 const VALID_TIERS = new Set<string>(TIERS);
+
+function sportCsvUrl(gid: string): string {
+  return `${REMOTE_SHEET_BASE}?gid=${encodeURIComponent(gid)}&single=true&output=csv`;
+}
 
 // ─── CSV parsing ────────────────────────────────────────────────────────
 
@@ -53,7 +50,6 @@ function parseCsv(text: string): string[][] {
         row.push(field);
         field = '';
       } else if (c === '\n' || c === '\r') {
-        // End of row (consume \r\n as one)
         if (c === '\r' && text[i + 1] === '\n') i++;
         row.push(field);
         field = '';
@@ -64,7 +60,6 @@ function parseCsv(text: string): string[][] {
       }
     }
   }
-  // Trailing field if file doesn't end with a newline.
   if (field !== '' || row.length > 0) {
     row.push(field);
     rows.push(row);
@@ -101,20 +96,20 @@ export type FetchResult =
   | { ok: true; tricks: Trick[] }
   | { ok: false; reason: string };
 
-export async function fetchRemoteTricks(): Promise<FetchResult> {
-  if (!REMOTE_TRICKS_URL) {
-    return { ok: false, reason: 'no remote url configured' };
+// Fetch one sport's library from its Sheet tab.
+export async function fetchSportTricks(gid: string): Promise<FetchResult> {
+  if (!REMOTE_SHEET_BASE) {
+    return { ok: false, reason: 'no remote sheet configured' };
   }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(REMOTE_TRICKS_URL, { signal: controller.signal });
+    const res = await fetch(sportCsvUrl(gid), { signal: controller.signal });
     if (!res.ok) return { ok: false, reason: `http ${res.status}` };
     const text = await res.text();
     const tricks = tricksFromCsv(text);
     if (tricks.length < 4) {
-      // Sanity floor — a library smaller than one trick per tier is almost
-      // certainly a misconfigured / empty / wrong sheet. Reject so we
+      // Sanity floor — a misconfigured / empty / wrong tab. Reject so we
       // don't replace a working library with garbage.
       return { ok: false, reason: 'parsed library too small' };
     }
