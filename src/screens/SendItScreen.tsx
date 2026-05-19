@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMatch, useSport } from '../store/MatchContext';
@@ -13,6 +14,32 @@ export function SendItScreen() {
   const { state, dispatch } = useMatch();
   const sport = useSport();
   const trick = state.currentTrick;
+  const duration = state.senditTimer; // seconds; 0 = off
+
+  // Per-trick countdown. Resets whenever the trick changes; on expiry it
+  // auto-advances (which changes the trick, which restarts the timer).
+  const [remaining, setRemaining] = useState(duration);
+  useEffect(() => {
+    if (duration <= 0) {
+      setRemaining(0);
+      return;
+    }
+    const deadline = Date.now() + duration * 1000;
+    setRemaining(duration);
+    const id = setInterval(() => {
+      const left = (deadline - Date.now()) / 1000;
+      if (left <= 0) {
+        clearInterval(id);
+        setRemaining(0);
+        dispatch({ type: 'NEXT_TRICK' });
+      } else {
+        setRemaining(left);
+      }
+    }, 100);
+    return () => clearInterval(id);
+  }, [trick, duration, dispatch]);
+
+  const fillPct = duration > 0 ? Math.max(0, Math.min(100, (remaining / duration) * 100)) : 0;
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -51,6 +78,20 @@ export function SendItScreen() {
                   {trick.name}
                 </Text>
               </View>
+            </View>
+          </View>
+        )}
+
+        {duration > 0 && (
+          <View style={styles.countdown}>
+            <Text style={styles.countdownNum}>{Math.ceil(remaining)}</Text>
+            <View style={styles.countdownTrack}>
+              <View
+                style={[
+                  styles.countdownFill,
+                  { width: `${fillPct}%`, backgroundColor: sport.accent },
+                ]}
+              />
             </View>
           </View>
         )}
@@ -168,4 +209,28 @@ const styles = StyleSheet.create({
   cta: {
     // sits just below the trick zone
   },
+  // Countdown
+  countdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  countdownNum: {
+    fontFamily: fonts.display,
+    fontSize: 22,
+    color: colors.ink,
+    minWidth: 34,
+    textAlign: 'right',
+  },
+  countdownTrack: {
+    flex: 1,
+    height: 10,
+    backgroundColor: colors.paper2,
+    borderWidth: 1.5,
+    borderColor: colors.rule,
+  },
+  countdownFill: {
+    height: '100%',
+  },
 });
+

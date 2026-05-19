@@ -28,6 +28,7 @@ export type State = {
   sportLocked: boolean; // true while a match is in progress
   mode: Mode;
   tiers: Tier[];
+  senditTimer: number; // Send-It per-trick countdown in seconds; 0 = off
   players: Player[];
   currentTrick: Trick | null;
   combo: Trick[];
@@ -48,6 +49,7 @@ export type Action =
   | { type: 'RENAME_PLAYER'; id: string; name: string }
   | { type: 'SET_MODE'; mode: Mode }
   | { type: 'TOGGLE_TIER'; tier: Tier }
+  | { type: 'SET_SENDIT_TIMER'; secs: number }
   | { type: 'START_MATCH' }
   | { type: 'REROLL' }
   | { type: 'NEXT_TRICK' }
@@ -69,6 +71,7 @@ export const initialState: State = {
   sportLocked: false,
   mode: 'classic',
   tiers: ['beginner', 'intermediate'],
+  senditTimer: 15,
   players: [],
   currentTrick: null,
   combo: [],
@@ -121,6 +124,9 @@ export function reducer(s: State, a: Action): State {
 
     case 'SET_MODE':
       return { ...s, mode: a.mode };
+
+    case 'SET_SENDIT_TIMER':
+      return { ...s, senditTimer: a.secs };
 
     case 'TOGGLE_TIER': {
       const has = s.tiers.includes(a.tier);
@@ -299,13 +305,20 @@ export function reducer(s: State, a: Action): State {
     }
 
     case 'HOME':
-      // Reset to idle, but keep the roster and the chosen sport.
-      return { ...initialState, players: s.players, sportId: s.sportId };
+      // Reset to idle, but keep the roster, the chosen sport, and the
+      // Send-It timer preference.
+      return {
+        ...initialState,
+        players: s.players,
+        sportId: s.sportId,
+        senditTimer: s.senditTimer,
+      };
 
     case 'HYDRATE':
-      // Replace state wholesale from persisted snapshot. The picker is
+      // Replace state from a persisted snapshot. Spreading initialState
+      // first backfills any field the snapshot predates. The picker is
       // force-closed so users don't restore into a half-open modal.
-      return { ...a.state, trickPickerOpen: false };
+      return { ...initialState, ...a.state, trickPickerOpen: false };
 
     default:
       return s;

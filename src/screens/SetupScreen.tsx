@@ -19,6 +19,15 @@ import { TierToggle } from '../ui/TierToggle';
 
 const MAX_PLAYERS = 12;
 
+// Send-It per-trick countdown options (seconds; 0 = off).
+const TIMER_OPTIONS: Array<{ secs: number; label: string }> = [
+  { secs: 0, label: 'Off' },
+  { secs: 10, label: '10s' },
+  { secs: 15, label: '15s' },
+  { secs: 20, label: '20s' },
+  { secs: 30, label: '30s' },
+];
+
 export function SetupScreen() {
   const { state, dispatch } = useMatch();
   const sport = useSport();
@@ -118,6 +127,25 @@ export function SetupScreen() {
             ))}
           </View>
         </Section>
+
+        {state.mode === 'sendit' && (
+          <Section num="03" label="TIMER">
+            <View style={styles.timerRow}>
+              {TIMER_OPTIONS.map((opt) => (
+                <TimerChip
+                  key={opt.secs}
+                  label={opt.label}
+                  active={state.senditTimer === opt.secs}
+                  onPress={() => dispatch({ type: 'SET_SENDIT_TIMER', secs: opt.secs })}
+                />
+              ))}
+            </View>
+            <Text style={styles.timerHint}>
+              Trick auto-advances when time runs out. Off = advance by tapping
+              Next.
+            </Text>
+          </Section>
+        )}
 
         <View style={styles.cta}>
           <ChunkyBtn
@@ -298,6 +326,35 @@ function ModeCard({
   );
 }
 
+function TimerChip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.timerChip,
+        active && { backgroundColor: colors.paper3, borderColor: colors.ink },
+      ]}
+    >
+      <Text
+        style={[
+          styles.timerChipText,
+          { color: active ? colors.ink : colors.inkMute },
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 // ─── Styles ──────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
@@ -464,6 +521,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
+  },
+  // Send-It timer
+  timerRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  timerChip: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: colors.paper2,
+    borderWidth: 1.5,
+    borderColor: colors.rule,
+    paddingVertical: 10,
+  },
+  timerChipText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  timerHint: {
+    marginTop: 10,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkMute,
+    lineHeight: 16,
   },
   // Footer
   cta: {
