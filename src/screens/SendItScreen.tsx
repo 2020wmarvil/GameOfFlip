@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMatch, useSport } from '../store/MatchContext';
 import { colors, fonts } from '../theme/tokens';
@@ -9,37 +9,44 @@ import { BackIcon } from '../ui/Icon';
 import { TierBadge } from '../ui/TierBadge';
 
 // Send-It — a solo random trick generator. One trick at a time; "Next"
-// rolls a fresh one. No timer, no scoring, no rounds.
+// rolls a fresh one. An optional per-trick countdown paces you, but it
+// never advances on its own — the trick only changes when you tap Next.
 export function SendItScreen() {
   const { state, dispatch } = useMatch();
   const sport = useSport();
   const trick = state.currentTrick;
   const duration = state.senditTimer; // seconds; 0 = off
 
-  // Per-trick countdown. Resets whenever the trick changes; on expiry it
-  // auto-advances (which changes the trick, which restarts the timer).
-  const [remaining, setRemaining] = useState(duration);
-  useEffect(() => {
-    if (duration <= 0) {
-      setRemaining(0);
-      return;
-    }
-    const deadline = Date.now() + duration * 1000;
-    setRemaining(duration);
-    const id = setInterval(() => {
-      const left = (deadline - Date.now()) / 1000;
-      if (left <= 0) {
-        clearInterval(id);
-        setRemaining(0);
-        dispatch({ type: 'NEXT_TRICK' });
-      } else {
-        setRemaining(left);
-      }
-    }, 100);
-    return () => clearInterval(id);
-  }, [trick, duration, dispatch]);
+  // progress: 1 = full, 0 = drained. Drives the bar (scaleX, native).
+  const progress = useRef(new Animated.Value(1)).current;
+  const [secsLeft, setSecsLeft] = useState(duration);
 
-  const fillPct = duration > 0 ? Math.max(0, Math.min(100, (remaining / duration) * 100)) : 0;
+  // Restart the countdown whenever the trick changes. On expiry it simply
+  // stops at 0 — it does NOT roll a new trick.
+  useEffect(() => {
+    if (duration <= 0) return;
+    progress.setValue(1);
+    setSecsLeft(duration);
+    let lastShown = duration;
+    const listener = progress.addListener(({ value }) => {
+      const s = Math.ceil(value * duration);
+      if (s !== lastShown) {
+        lastShown = s;
+        setSecsLeft(s);
+      }
+    });
+    const anim = Animated.timing(progress, {
+      toValue: 0,
+      duration: duration * 1000,
+      easing: Easing.linear,
+      useNativeDriver: true,
+    });
+    anim.start();
+    return () => {
+      anim.stop();
+      progress.removeListener(listener);
+    };
+  }, [trick, duration, progress]);
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -84,12 +91,15 @@ export function SendItScreen() {
 
         {duration > 0 && (
           <View style={styles.countdown}>
-            <Text style={styles.countdownNum}>{Math.ceil(remaining)}</Text>
+            <Text style={styles.countdownNum}>{Math.max(0, secsLeft)}</Text>
             <View style={styles.countdownTrack}>
-              <View
+              <Animated.View
                 style={[
                   styles.countdownFill,
-                  { width: `${fillPct}%`, backgroundColor: sport.accent },
+                  {
+                    backgroundColor: sport.accent,
+                    transform: [{ scaleX: progress }],
+                  },
                 ]}
               />
             </View>
@@ -150,7 +160,7 @@ const styles = StyleSheet.create({
     color: colors.inkMute,
     letterSpacing: 2,
   },
-  // Body — trick zone + Next centered in the available space.
+  // Body — trick zone + countdown + Next centered in the available space.
   body: {
     flex: 1,
     justifyContent: 'center',
@@ -207,7 +217,7 @@ const styles = StyleSheet.create({
     marginVertical: 6,
   },
   cta: {
-    // sits just below the trick zone
+    // sits just below the countdown
   },
   // Countdown
   countdown: {
@@ -228,9 +238,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper2,
     borderWidth: 1.5,
     borderColor: colors.rule,
+    overflow: 'hidden',
   },
+  // Full-width fill, anchored left, scaled on the X axis to drain.
   countdownFill: {
+    width: '100%',
     height: '100%',
+    transformOrigin: 'left',
   },
 });
-
