@@ -1,72 +1,84 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import {
-  DEFAULT_TRICKS,
-  setActiveLibrary,
-  type Trick,
-} from '../data/tricks';
-import { fetchRemoteTricks } from '../data/tricksRemote';
+import { SPORTS, setActiveTricks, type SportId } from '../data/sports';
+import type { Trick } from '../data/tricks';
+import { fetchSportTricks } from '../data/tricksRemote';
 
-type Ctx = { library: Trick[] };
+type Libraries = Record<SportId, Trick[]>;
 
-const TrickLibCtx = createContext<Ctx | null>(null);
+const TrickLibCtx = createContext<Libraries | null>(null);
 
-// Bump the suffix if Trick's shape changes incompatibly.
-const CACHE_KEY = '@gameOfFlip/trickLibrary-v1';
+// Per-sport cache key. Bump the suffix if Trick's shape changes.
+const cacheKey = (id: SportId) => `@gameOfFlip/trickLibrary-${id}-v1`;
 
-// Load order on mount:
-//   1. Read AsyncStorage cache → adopt instantly if present.
-//   2. Fire off remote fetch in the background → if it succeeds, replace
-//      the library and persist as the new cache.
-//   3. If there's no cache and the remote fails, the bundled DEFAULT_TRICKS
-//      that the active library was initialized with stays in place.
+function bundledLibraries(): Libraries {
+  const libs = {} as Libraries;
+  for (const sport of SPORTS) libs[sport.id] = sport.bundledTricks;
+  return libs;
+}
+
+// On mount, for every sport: adopt the AsyncStorage cache if present, then
+// fetch the sport's Sheet tab in the background and replace + re-cache on
+// success. Bundled libraries stay in place if both cache and remote miss.
 export function TrickLibraryProvider({ children }: { children: ReactNode }) {
-  const [library, setLibrary] = useState<Trick[]>(DEFAULT_TRICKS);
+  const [libraries, setLibraries] = useState<Libraries>(bundledLibraries);
   const mounted = useRef(true);
 
-  // Keep the module-level mutable mirror in sync so the reducer's pure
-  // helpers (filterTricks, randomTrick via filterTricks) read the right data.
-  const adopt = (next: Trick[]) => {
-    setActiveLibrary(next);
-    if (mounted.current) setLibrary(next);
+  // Keep the module-level mirror in sync so the reducer's pure helpers
+  // (filterTricksFor) read the right data.
+  const adopt = (id: SportId, tricks: Trick[]) => {
+    setActiveTricks(id, tricks);
+    if (mounted.current) {
+      setLibraries((prev) => ({ ...prev, [id]: tricks }));
+    }
   };
 
   useEffect(() => {
     mounted.current = true;
 
-    (async () => {
-      // 1) Hydrate from cache.
-      try {
-        const raw = await AsyncStorage.getItem(CACHE_KEY);
-        if (raw) {
-          const cached = JSON.parse(raw) as Trick[];
-          if (Array.isArray(cached) && cached.length >= 4) {
-            adopt(cached);
+    for (const sport of SPORTS) {
+      (async () => {
+        // 1) Hydrate from cache.
+        try {
+          const raw = await AsyncStorage.getItem(cacheKey(sport.id));
+          if (raw) {
+            const cached = JSON.parse(raw) as Trick[];
+            if (Array.isArray(cached) && cached.length >= 4) {
+              adopt(sport.id, cached);
+            }
           }
+        } catch {
+          await AsyncStorage.removeItem(cacheKey(sport.id)).catch(() => {});
         }
-      } catch {
-        // Bad cache — drop it.
-        await AsyncStorage.removeItem(CACHE_KEY).catch(() => {});
-      }
 
-      // 2) Try remote.
-      const result = await fetchRemoteTricks();
-      if (result.ok) {
-        adopt(result.tricks);
-        AsyncStorage.setItem(CACHE_KEY, JSON.stringify(result.tricks)).catch(() => {});
-      }
-    })();
+        // 2) Try the remote tab.
+        const result = await fetchSportTricks(sport.gid);
+        if (result.ok) {
+          adopt(sport.id, result.tricks);
+          AsyncStorage.setItem(
+            cacheKey(sport.id),
+            JSON.stringify(result.tricks),
+          ).catch(() => {});
+        }
+      })();
+    }
 
     return () => {
       mounted.current = false;
     };
   }, []);
 
-  return <TrickLibCtx.Provider value={{ library }}>{children}</TrickLibCtx.Provider>;
+  return <TrickLibCtx.Provider value={libraries}>{children}</TrickLibCtx.Provider>;
 }
 
-export function useTrickLibrary(): Trick[] {
+// All sports' current libraries.
+export function useTrickLibraries(): Libraries {
   const ctx = useContext(TrickLibCtx);
-  if (!ctx) throw new Error('useTrickLibrary must be used inside TrickLibraryProvider');
-  return ctx.library;
+  if (!ctx) throw new Error('useTrickLibraries must be used inside TrickLibraryProvider');
+  return ctx;
+}
+
+// One sport's current library.
+export function useSportTricks(id: SportId): Trick[] {
+  return useTrickLibraries()[id];
 }

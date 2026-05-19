@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { type Tier } from '../data/tricks';
-import { useTrickLibrary } from '../store/TrickLibraryContext';
+import { useSport } from '../store/MatchContext';
+import { useSportTricks } from '../store/TrickLibraryContext';
 import { colors, fonts, tierColors } from '../theme/tokens';
 
 type Props = {
@@ -11,7 +12,8 @@ type Props = {
 
 export function TierToggle({ tier, active, onPress }: Props) {
   const c = tierColors[tier];
-  const library = useTrickLibrary();
+  const sport = useSport();
+  const library = useSportTricks(sport.id);
   const count = library.filter((t) => t.tier === tier).length;
   return (
     <Pressable

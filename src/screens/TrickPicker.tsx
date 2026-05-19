@@ -10,8 +10,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { type Trick } from '../data/tricks';
-import { useMatch } from '../store/MatchContext';
-import { useTrickLibrary } from '../store/TrickLibraryContext';
+import { useMatch, useSport } from '../store/MatchContext';
+import { useSportTricks } from '../store/TrickLibraryContext';
 import { colors, fonts } from '../theme/tokens';
 import { XIcon } from '../ui/Icon';
 import { StampLabel } from '../ui/StampLabel';
@@ -19,9 +19,10 @@ import { TierBadge } from '../ui/TierBadge';
 
 export function TrickPicker() {
   const { state, dispatch } = useMatch();
+  const sport = useSport();
   const [search, setSearch] = useState('');
 
-  const library = useTrickLibrary();
+  const library = useSportTricks(sport.id);
   const pool = useMemo(
     () => library.filter((t) => state.tiers.includes(t.tier)),
     [library, state.tiers],
@@ -53,7 +54,7 @@ export function TrickPicker() {
         {/* The sheet itself swallows touches so backdrop press doesn't fire */}
         <Pressable style={styles.sheetWrap} onPress={() => {}}>
           {/* Red "shadow" strip above the sheet — RN can't do box-shadow above */}
-          <View style={styles.topShadow} />
+          <View style={[styles.topShadow, { backgroundColor: sport.accent }]} />
           <SafeAreaView style={styles.sheet} edges={['bottom']}>
             <View style={styles.head}>
               <StampLabel rotate={-2} size={10}>
@@ -117,7 +118,6 @@ const styles = StyleSheet.create({
   },
   topShadow: {
     height: 6,
-    backgroundColor: colors.red,
   },
   sheet: {
     backgroundColor: colors.paper,

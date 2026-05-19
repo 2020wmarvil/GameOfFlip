@@ -1,46 +1,60 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createContext, useContext, useEffect, useReducer, useRef, useState, type Dispatch, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useReducer,
+  useState,
+  type Dispatch,
+  type ReactNode,
+} from 'react';
+import { getSport, SPORT_IDS, type Sport, type SportId } from '../data/sports';
 import { initialState, reducer, type Action, type State } from './match';
 
 type Ctx = { state: State; dispatch: Dispatch<Action> };
 
 const MatchCtx = createContext<Ctx | null>(null);
 
-// Versioned key — bump the suffix if the State shape changes incompatibly.
-const STORAGE_KEY = '@gameOfFlip/match-v1';
+// In-progress match snapshot (match / gameover screens only).
+const MATCH_KEY = '@gameOfFlip/match-v1';
+// Chosen sport — persists across launches regardless of screen.
+const SPORT_KEY = '@gameOfFlip/sportId-v1';
 
-// Only persist the state while a match is in progress or just ended.
-// Home and setup are considered "idle" — wipe storage so a relaunch
-// starts with a clean roster, per the product decision.
-function shouldPersist(state: State): boolean {
+function shouldPersistMatch(state: State): boolean {
   return state.screen === 'match' || state.screen === 'gameover';
+}
+
+function isSportId(v: unknown): v is SportId {
+  return typeof v === 'string' && (SPORT_IDS as string[]).includes(v);
 }
 
 export function MatchProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [hydrated, setHydrated] = useState(false);
-  // Track whether we've finished initial load so the persist effect
-  // doesn't fire during it.
-  const isFirstWrite = useRef(true);
 
   // ─── Load on mount ──────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (!cancelled && raw) {
-          const saved = JSON.parse(raw) as State;
+        const matchRaw = await AsyncStorage.getItem(MATCH_KEY);
+        if (matchRaw) {
+          const saved = JSON.parse(matchRaw) as State;
           if (saved && (saved.screen === 'match' || saved.screen === 'gameover')) {
-            dispatch({ type: 'HYDRATE', state: saved });
-          } else {
-            // Stored state is in an idle screen — discard.
-            await AsyncStorage.removeItem(STORAGE_KEY);
+            // A match snapshot restores everything, including sportId.
+            if (!cancelled) dispatch({ type: 'HYDRATE', state: saved });
+            if (!cancelled) setHydrated(true);
+            return;
           }
+          await AsyncStorage.removeItem(MATCH_KEY);
+        }
+        // No in-progress match — just restore the chosen sport.
+        const savedSport = await AsyncStorage.getItem(SPORT_KEY);
+        if (!cancelled && isSportId(savedSport)) {
+          dispatch({ type: 'SET_SPORT', sportId: savedSport });
         }
       } catch {
-        // Corrupt JSON or storage failure — wipe and proceed.
-        await AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+        await AsyncStorage.removeItem(MATCH_KEY).catch(() => {});
       } finally {
         if (!cancelled) setHydrated(true);
       }
@@ -50,20 +64,21 @@ export function MatchProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // ─── Persist on every change after hydration ────────────────────────
+  // ─── Persist the in-progress match ──────────────────────────────────
   useEffect(() => {
     if (!hydrated) return;
-    if (isFirstWrite.current) {
-      isFirstWrite.current = false;
-      // Still write on the first post-hydration tick in case HYDRATE
-      // restored an in-progress match and we want to refresh the blob.
-    }
-    if (shouldPersist(state)) {
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
+    if (shouldPersistMatch(state)) {
+      AsyncStorage.setItem(MATCH_KEY, JSON.stringify(state)).catch(() => {});
     } else {
-      AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+      AsyncStorage.removeItem(MATCH_KEY).catch(() => {});
     }
   }, [state, hydrated]);
+
+  // ─── Persist the chosen sport (survives across launches) ────────────
+  useEffect(() => {
+    if (!hydrated) return;
+    AsyncStorage.setItem(SPORT_KEY, state.sportId).catch(() => {});
+  }, [state.sportId, hydrated]);
 
   if (!hydrated) return null;
 
@@ -74,4 +89,10 @@ export function useMatch(): Ctx {
   const ctx = useContext(MatchCtx);
   if (!ctx) throw new Error('useMatch must be used inside MatchProvider');
   return ctx;
+}
+
+// The current sport profile — accent, word, label, tag, etc.
+export function useSport(): Sport {
+  const { state } = useMatch();
+  return getSport(state.sportId);
 }

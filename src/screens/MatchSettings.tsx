@@ -8,8 +8,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TIERS } from '../data/tricks';
-import { useMatch } from '../store/MatchContext';
-import { useTrickLibrary } from '../store/TrickLibraryContext';
+import { useMatch, useSport } from '../store/MatchContext';
+import { useSportTricks } from '../store/TrickLibraryContext';
 import { colors, fonts } from '../theme/tokens';
 import { XIcon } from '../ui/Icon';
 import { StampLabel } from '../ui/StampLabel';
@@ -22,7 +22,8 @@ type Props = {
 
 export function MatchSettings({ visible, onClose }: Props) {
   const { state, dispatch } = useMatch();
-  const library = useTrickLibrary();
+  const sport = useSport();
+  const library = useSportTricks(sport.id);
   const poolCount = library.filter((t) => state.tiers.includes(t.tier)).length;
 
   return (

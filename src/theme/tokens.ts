@@ -1,5 +1,13 @@
 import type { Tier } from '../data/tricks';
 
+// Three-layer color model:
+//   base     — paper / ink / rule, never changes
+//   red      — LOCKED danger signal (MISS, SET FAIL, eliminated, missed tint)
+//   lime     — LOCKED good signal (LAND, setter row, Add-On shadow, landed tint)
+// The per-sport brand accent is NOT a static token — it lives on the Sport
+// profile and is read via useSport().accent (Trampoline = red, Tricking =
+// cobalt). Keeping red/lime locked means "miss/land" reads the same in every
+// sport even as the chrome re-themes.
 export const colors = {
   paper: '#0c0b09',
   paper2: '#16140f',

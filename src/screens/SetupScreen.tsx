@@ -9,8 +9,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TIERS } from '../data/tricks';
-import { useMatch } from '../store/MatchContext';
-import { useTrickLibrary } from '../store/TrickLibraryContext';
+import { useMatch, useSport } from '../store/MatchContext';
+import { useSportTricks } from '../store/TrickLibraryContext';
 import { colors, fonts } from '../theme/tokens';
 import { ChunkyBtn } from '../ui/ChunkyBtn';
 import { BackIcon, PlusIcon, XIcon } from '../ui/Icon';
@@ -19,11 +19,24 @@ import { TierToggle } from '../ui/TierToggle';
 
 const MAX_PLAYERS = 12;
 
+// Send-It per-trick countdown options (seconds; 0 = off).
+const TIMER_OPTIONS: Array<{ secs: number; label: string }> = [
+  { secs: 0, label: 'Off' },
+  { secs: 10, label: '10s' },
+  { secs: 15, label: '15s' },
+  { secs: 20, label: '20s' },
+  { secs: 30, label: '30s' },
+];
+
 export function SetupScreen() {
   const { state, dispatch } = useMatch();
-  const library = useTrickLibrary();
+  const sport = useSport();
+  const word = sport.word;
+  const library = useSportTricks(sport.id);
   const poolCount = library.filter((t) => state.tiers.includes(t.tier)).length;
-  const canStart = state.players.length >= 2;
+  // Send-It is solo — no roster, no minimum-players gate.
+  const showRoster = state.mode !== 'sendit';
+  const canStart = !showRoster || state.players.length >= 2;
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -37,7 +50,7 @@ export function SetupScreen() {
         </Pressable>
         <View style={styles.headerStamp}>
           <StampLabel rotate={-2} size={10}>
-            NEW MATCH · SETUP
+            {sport.label} · NEW MATCH
           </StampLabel>
         </View>
         <View style={{ width: 36 }} />
@@ -48,46 +61,58 @@ export function SetupScreen() {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        <Section num="01" label="ROSTER" meta={`${state.players.length}/${MAX_PLAYERS}`}>
-          <View style={{ gap: 6 }}>
-            {state.players.map((p, i) => (
-              <PlayerChip
-                key={p.id}
-                index={i}
-                name={p.name}
-                onRemove={() => dispatch({ type: 'REMOVE_PLAYER', id: p.id })}
-              />
-            ))}
-            {state.players.length < MAX_PLAYERS && (
-              <AddPlayerRow
-                index={state.players.length}
-                onAdd={(name) => dispatch({ type: 'ADD_PLAYER', name })}
-              />
-            )}
-          </View>
-        </Section>
+        {showRoster && (
+          <Section num="01" label="ROSTER" meta={`${state.players.length}/${MAX_PLAYERS}`}>
+            <View style={{ gap: 6 }}>
+              {state.players.map((p, i) => (
+                <PlayerChip
+                  key={p.id}
+                  index={i}
+                  name={p.name}
+                  onRemove={() => dispatch({ type: 'REMOVE_PLAYER', id: p.id })}
+                />
+              ))}
+              {state.players.length < MAX_PLAYERS && (
+                <AddPlayerRow
+                  index={state.players.length}
+                  onAdd={(name) => dispatch({ type: 'ADD_PLAYER', name })}
+                />
+              )}
+            </View>
+          </Section>
+        )}
 
-        <Section num="02" label="MODE">
+        <Section num={showRoster ? '02' : '01'} label="MODE">
           <View style={styles.modeGrid}>
+            <View style={styles.modeRow}>
+              <ModeCard
+                tag="g.o.f."
+                title="CLASSIC"
+                desc="One trick a round. Land it or take a letter."
+                active={state.mode === 'classic'}
+                onPress={() => dispatch({ type: 'SET_MODE', mode: 'classic' })}
+              />
+              <ModeCard
+                tag="combo"
+                title="ADD-ON"
+                desc="The line grows. Every round you run it back, plus one."
+                active={state.mode === 'addon'}
+                onPress={() => dispatch({ type: 'SET_MODE', mode: 'addon' })}
+              />
+            </View>
             <ModeCard
-              tag="g.o.f."
-              title="CLASSIC"
-              desc="One trick a round. Land it or take a letter."
-              active={state.mode === 'classic'}
-              onPress={() => dispatch({ type: 'SET_MODE', mode: 'classic' })}
-            />
-            <ModeCard
-              tag="combo"
-              title="ADD-ON"
-              desc="The line grows. Every round you run it back, plus one."
-              active={state.mode === 'addon'}
-              onPress={() => dispatch({ type: 'SET_MODE', mode: 'addon' })}
+              fullWidth
+              tag="solo"
+              title="SEND-IT"
+              desc="No rounds, no score. Tap Next for a fresh random trick."
+              active={state.mode === 'sendit'}
+              onPress={() => dispatch({ type: 'SET_MODE', mode: 'sendit' })}
             />
           </View>
         </Section>
 
         <Section
-          num="03"
+          num={showRoster ? '03' : '02'}
           label="DIFFICULTY POOL"
           meta={`${poolCount} tricks`}
         >
@@ -103,6 +128,25 @@ export function SetupScreen() {
           </View>
         </Section>
 
+        {state.mode === 'sendit' && (
+          <Section num="03" label="TIMER">
+            <View style={styles.timerRow}>
+              {TIMER_OPTIONS.map((opt) => (
+                <TimerChip
+                  key={opt.secs}
+                  label={opt.label}
+                  active={state.senditTimer === opt.secs}
+                  onPress={() => dispatch({ type: 'SET_SENDIT_TIMER', secs: opt.secs })}
+                />
+              ))}
+            </View>
+            <Text style={styles.timerHint}>
+              Trick auto-advances when time runs out. Off = advance by tapping
+              Next.
+            </Text>
+          </Section>
+        )}
+
         <View style={styles.cta}>
           <ChunkyBtn
             variant={canStart ? 'success' : 'secondary'}
@@ -115,11 +159,13 @@ export function SetupScreen() {
           </ChunkyBtn>
         </View>
 
-        <Text style={styles.footerNote}>
-          WORD TO SPELL:{' '}
-          <Text style={styles.footerWord}>{state.word.split('').join('·')}</Text>
-          {'   '}· {state.word.length} MISSES ELIMINATES
-        </Text>
+        {state.mode !== 'sendit' && (
+          <Text style={styles.footerNote}>
+            WORD TO SPELL:{' '}
+            <Text style={styles.footerWord}>{word.split('').join('·')}</Text>
+            {'   '}· {word.length} MISSES ELIMINATES
+          </Text>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -233,15 +279,17 @@ function ModeCard({
   desc,
   active,
   onPress,
+  fullWidth,
 }: {
   tag: string;
   title: string;
   desc: string;
   active: boolean;
   onPress: () => void;
+  fullWidth?: boolean;
 }) {
   return (
-    <View style={styles.modeCardWrap}>
+    <View style={[styles.modeCardWrap, fullWidth && styles.modeCardWrapFull]}>
       {/* lime offset shadow shows only when active */}
       {active && (
         <View
@@ -275,6 +323,35 @@ function ModeCard({
         )}
       </Pressable>
     </View>
+  );
+}
+
+function TimerChip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.timerChip,
+        active && { backgroundColor: colors.paper3, borderColor: colors.ink },
+      ]}
+    >
+      <Text
+        style={[
+          styles.timerChipText,
+          { color: active ? colors.ink : colors.inkMute },
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -389,13 +466,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   // Mode
+  // Column: a 2-up row (Classic / Add-On) + a full-width Send-It card.
   modeGrid: {
+    gap: 8,
+  },
+  modeRow: {
     flexDirection: 'row',
     gap: 8,
   },
   modeCardWrap: {
     flex: 1,
     position: 'relative',
+  },
+  modeCardWrapFull: {
+    flex: 0,
   },
   modeCard: {
     backgroundColor: colors.paper2,
@@ -437,6 +521,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
+  },
+  // Send-It timer
+  timerRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  timerChip: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: colors.paper2,
+    borderWidth: 1.5,
+    borderColor: colors.rule,
+    paddingVertical: 10,
+  },
+  timerChipText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  timerHint: {
+    marginTop: 10,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkMute,
+    lineHeight: 16,
   },
   // Footer
   cta: {

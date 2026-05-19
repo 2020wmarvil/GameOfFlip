@@ -1,7 +1,8 @@
-import { filterTricks, randomTrick, type Tier, type Trick } from '../data/tricks';
+import { filterTricksFor, getSport, type SportId } from '../data/sports';
+import { randomTrick, type Tier, type Trick } from '../data/tricks';
 
-export type Mode = 'classic' | 'addon';
-export type Screen = 'home' | 'setup' | 'match' | 'gameover';
+export type Mode = 'classic' | 'addon' | 'sendit';
+export type Screen = 'home' | 'setup' | 'match' | 'gameover' | 'sendit';
 export type Result = 'landed' | 'missed';
 
 export type Player = {
@@ -23,9 +24,11 @@ export type HistoryEntry = {
 
 export type State = {
   screen: Screen;
+  sportId: SportId; // current sport — drives word, accent, trick library
+  sportLocked: boolean; // true while a match is in progress
   mode: Mode;
   tiers: Tier[];
-  word: string;
+  senditTimer: number; // Send-It per-trick countdown in seconds; 0 = off
   players: Player[];
   currentTrick: Trick | null;
   combo: Trick[];
@@ -40,14 +43,16 @@ export type State = {
 
 export type Action =
   | { type: 'GOTO'; screen: Screen }
+  | { type: 'SET_SPORT'; sportId: SportId }
   | { type: 'ADD_PLAYER'; name: string }
   | { type: 'REMOVE_PLAYER'; id: string }
   | { type: 'RENAME_PLAYER'; id: string; name: string }
   | { type: 'SET_MODE'; mode: Mode }
   | { type: 'TOGGLE_TIER'; tier: Tier }
-  | { type: 'SET_WORD'; word: string }
+  | { type: 'SET_SENDIT_TIMER'; secs: number }
   | { type: 'START_MATCH' }
   | { type: 'REROLL' }
+  | { type: 'NEXT_TRICK' }
   | { type: 'PICK_TRICK'; trick: Trick }
   | { type: 'OPEN_PICKER' }
   | { type: 'CLOSE_PICKER' }
@@ -56,15 +61,18 @@ export type Action =
   | { type: 'NEXT_ROUND' }
   | { type: 'REMATCH' }
   | { type: 'HOME' }
+  | { type: 'EXIT_TO_SETUP' }
   | { type: 'HYDRATE'; state: State };
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 
 export const initialState: State = {
   screen: 'home',
+  sportId: 'trampoline',
+  sportLocked: false,
   mode: 'classic',
   tiers: ['beginner', 'intermediate'],
-  word: 'FLIP',
+  senditTimer: 15,
   players: [],
   currentTrick: null,
   combo: [],
@@ -77,10 +85,21 @@ export const initialState: State = {
   trickPickerOpen: false,
 };
 
+// The loss word for a state — derived from the current sport.
+export function wordFor(s: State): string {
+  return getSport(s.sportId).word;
+}
+
 export function reducer(s: State, a: Action): State {
   switch (a.type) {
     case 'GOTO':
       return { ...s, screen: a.screen };
+
+    case 'SET_SPORT': {
+      if (s.sportLocked) return s; // sport is locked mid-match
+      if (a.sportId === s.sportId) return s;
+      return { ...s, sportId: a.sportId };
+    }
 
     case 'ADD_PLAYER': {
       if (s.players.length >= 12) return s;
@@ -107,6 +126,9 @@ export function reducer(s: State, a: Action): State {
     case 'SET_MODE':
       return { ...s, mode: a.mode };
 
+    case 'SET_SENDIT_TIMER':
+      return { ...s, senditTimer: a.secs };
+
     case 'TOGGLE_TIER': {
       const has = s.tiers.includes(a.tier);
       let tiers = has ? s.tiers.filter((t) => t !== a.tier) : [...s.tiers, a.tier];
@@ -114,15 +136,14 @@ export function reducer(s: State, a: Action): State {
       return { ...s, tiers };
     }
 
-    case 'SET_WORD':
-      return { ...s, word: a.word };
-
     case 'START_MATCH': {
-      const pool = filterTricks(s.tiers);
+      const pool = filterTricksFor(s.sportId, s.tiers);
       const first = randomTrick(pool);
       return {
         ...s,
-        screen: 'match',
+        // Send-It is a solo trick generator on its own screen.
+        screen: s.mode === 'sendit' ? 'sendit' : 'match',
+        sportLocked: true,
         currentTrick: first,
         combo: [],
         roundIdx: 1,
@@ -141,7 +162,7 @@ export function reducer(s: State, a: Action): State {
     }
 
     case 'REROLL': {
-      const pool = filterTricks(s.tiers);
+      const pool = filterTricksFor(s.sportId, s.tiers);
       const next = randomTrick(pool, s.currentTrick?.name);
       return {
         ...s,
@@ -149,6 +170,12 @@ export function reducer(s: State, a: Action): State {
         responses: {},
         rerollsThisRound: s.rerollsThisRound + 1,
       };
+    }
+
+    case 'NEXT_TRICK': {
+      // Send-It mode — roll a fresh random trick, never repeating the current.
+      const pool = filterTricksFor(s.sportId, s.tiers);
+      return { ...s, currentTrick: randomTrick(pool, s.currentTrick?.name) };
     }
 
     case 'PICK_TRICK':
@@ -170,7 +197,7 @@ export function reducer(s: State, a: Action): State {
     }
 
     case 'NEXT_ROUND': {
-      const wordLen = s.word.length;
+      const wordLen = wordFor(s).length;
       const setter = s.players[s.setterIdx];
       const setterResult = setter ? s.responses[setter.id] : null;
       const setterLanded = setterResult === 'landed';
@@ -238,7 +265,7 @@ export function reducer(s: State, a: Action): State {
       const nextSetterId = aliveIds[(curPos + 1) % aliveIds.length];
       const nextSetterIdx = players.findIndex((p) => p.id === nextSetterId);
 
-      const pool = filterTricks(s.tiers);
+      const pool = filterTricksFor(s.sportId, s.tiers);
       const next = randomTrick(pool, s.currentTrick?.name);
 
       return {
@@ -255,11 +282,12 @@ export function reducer(s: State, a: Action): State {
     }
 
     case 'REMATCH': {
-      const pool = filterTricks(s.tiers);
+      const pool = filterTricksFor(s.sportId, s.tiers);
       const first = randomTrick(pool);
       return {
         ...s,
         screen: 'match',
+        sportLocked: true,
         currentTrick: first,
         combo: [],
         roundIdx: 1,
@@ -278,12 +306,35 @@ export function reducer(s: State, a: Action): State {
     }
 
     case 'HOME':
-      return { ...initialState, players: s.players };
+      // Reset to idle, but keep the roster, the chosen sport, and the
+      // Send-It timer preference.
+      return {
+        ...initialState,
+        players: s.players,
+        sportId: s.sportId,
+        senditTimer: s.senditTimer,
+      };
+
+    case 'EXIT_TO_SETUP':
+      // Bail out of a match (or Send-It session, or Game Over) back to
+      // Setup. Clears in-progress match state and unlocks the sport, but
+      // keeps the roster, sport, mode, tiers, and timer preference — so
+      // the user can tweak Setup and run another match without redoing it.
+      return {
+        ...initialState,
+        screen: 'setup',
+        players: s.players,
+        sportId: s.sportId,
+        senditTimer: s.senditTimer,
+        mode: s.mode,
+        tiers: s.tiers,
+      };
 
     case 'HYDRATE':
-      // Replace state wholesale from persisted snapshot. The picker is
+      // Replace state from a persisted snapshot. Spreading initialState
+      // first backfills any field the snapshot predates. The picker is
       // force-closed so users don't restore into a half-open modal.
-      return { ...a.state, trickPickerOpen: false };
+      return { ...initialState, ...a.state, trickPickerOpen: false };
 
     default:
       return s;

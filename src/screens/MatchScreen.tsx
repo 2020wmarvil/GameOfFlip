@@ -8,8 +8,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { Player, Result } from '../store/match';
-import { useMatch } from '../store/MatchContext';
+import type { Mode, Player, Result } from '../store/match';
+import { useMatch, useSport } from '../store/MatchContext';
 import { colors, fonts } from '../theme/tokens';
 import { BigStamp } from '../ui/BigStamp';
 import { ChunkyBtn, type ChunkyVariant } from '../ui/ChunkyBtn';
@@ -21,6 +21,8 @@ import { MatchSettings } from './MatchSettings';
 
 export function MatchScreen() {
   const { state, dispatch } = useMatch();
+  const sport = useSport();
+  const word = sport.word;
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // ─── Derived state ────────────────────────────────────────────────────
@@ -65,7 +67,11 @@ export function MatchScreen() {
   const confirmExit = () => {
     Alert.alert('End match?', 'Your progress will be lost.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'End match', style: 'destructive', onPress: () => dispatch({ type: 'HOME' }) },
+      {
+        text: 'End match',
+        style: 'destructive',
+        onPress: () => dispatch({ type: 'EXIT_TO_SETUP' }),
+      },
     ]);
   };
 
@@ -112,7 +118,7 @@ export function MatchScreen() {
             <PlayerPill
               key={p.id}
               player={p}
-              word={state.word}
+              word={word}
               isSetter={setter?.id === p.id}
             />
           ))}
@@ -146,7 +152,7 @@ export function MatchScreen() {
           {setter && !setter.eliminated && (
             <ResultRow
               player={setter}
-              word={state.word}
+              word={word}
               response={state.responses[setter.id]}
               isSetter
               disabled={false}
@@ -165,7 +171,7 @@ export function MatchScreen() {
               <ResultRow
                 key={p.id}
                 player={p}
-                word={state.word}
+                word={word}
                 response={state.responses[p.id]}
                 disabled={setterUnresolved}
                 onLand={() => dispatch({ type: 'SET_RESULT', id: p.id, result: 'landed' })}
@@ -238,12 +244,13 @@ function PlayerPill({
 
 function ClassicTrickZone() {
   const { state, dispatch } = useMatch();
+  const sport = useSport();
   const trick = state.currentTrick;
   if (!trick) return null;
   return (
     <View style={styles.tzWrap}>
-      {/* offset red shadow plate */}
-      <View pointerEvents="none" style={[styles.tzShadow, { backgroundColor: colors.red }]} />
+      {/* offset accent shadow plate (Classic = brand chrome) */}
+      <View pointerEvents="none" style={[styles.tzShadow, { backgroundColor: sport.accent }]} />
       <View style={styles.tzInner}>
         <Halftone size={5} opacity={0.18} />
         <View style={styles.tzCorner}>
@@ -549,7 +556,7 @@ function RrBtn({
 // SetFailedBanner & EliminatedRow
 // ═══════════════════════════════════════════════════════════════════════
 
-function SetFailedBanner({ mode }: { mode: 'classic' | 'addon' }) {
+function SetFailedBanner({ mode }: { mode: Mode }) {
   return (
     <View style={styles.setFailed}>
       <BigStamp text="SET FAIL" size={18} rotate={-6} borderWidth={2.5} />
