@@ -25,7 +25,9 @@ export function SetupScreen() {
   const word = sport.word;
   const library = useSportTricks(sport.id);
   const poolCount = library.filter((t) => state.tiers.includes(t.tier)).length;
-  const canStart = state.players.length >= 2;
+  // Send-It is solo — no roster, no minimum-players gate.
+  const showRoster = state.mode !== 'sendit';
+  const canStart = !showRoster || state.players.length >= 2;
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -50,46 +52,58 @@ export function SetupScreen() {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        <Section num="01" label="ROSTER" meta={`${state.players.length}/${MAX_PLAYERS}`}>
-          <View style={{ gap: 6 }}>
-            {state.players.map((p, i) => (
-              <PlayerChip
-                key={p.id}
-                index={i}
-                name={p.name}
-                onRemove={() => dispatch({ type: 'REMOVE_PLAYER', id: p.id })}
-              />
-            ))}
-            {state.players.length < MAX_PLAYERS && (
-              <AddPlayerRow
-                index={state.players.length}
-                onAdd={(name) => dispatch({ type: 'ADD_PLAYER', name })}
-              />
-            )}
-          </View>
-        </Section>
+        {showRoster && (
+          <Section num="01" label="ROSTER" meta={`${state.players.length}/${MAX_PLAYERS}`}>
+            <View style={{ gap: 6 }}>
+              {state.players.map((p, i) => (
+                <PlayerChip
+                  key={p.id}
+                  index={i}
+                  name={p.name}
+                  onRemove={() => dispatch({ type: 'REMOVE_PLAYER', id: p.id })}
+                />
+              ))}
+              {state.players.length < MAX_PLAYERS && (
+                <AddPlayerRow
+                  index={state.players.length}
+                  onAdd={(name) => dispatch({ type: 'ADD_PLAYER', name })}
+                />
+              )}
+            </View>
+          </Section>
+        )}
 
-        <Section num="02" label="MODE">
+        <Section num={showRoster ? '02' : '01'} label="MODE">
           <View style={styles.modeGrid}>
+            <View style={styles.modeRow}>
+              <ModeCard
+                tag="g.o.f."
+                title="CLASSIC"
+                desc="One trick a round. Land it or take a letter."
+                active={state.mode === 'classic'}
+                onPress={() => dispatch({ type: 'SET_MODE', mode: 'classic' })}
+              />
+              <ModeCard
+                tag="combo"
+                title="ADD-ON"
+                desc="The line grows. Every round you run it back, plus one."
+                active={state.mode === 'addon'}
+                onPress={() => dispatch({ type: 'SET_MODE', mode: 'addon' })}
+              />
+            </View>
             <ModeCard
-              tag="g.o.f."
-              title="CLASSIC"
-              desc="One trick a round. Land it or take a letter."
-              active={state.mode === 'classic'}
-              onPress={() => dispatch({ type: 'SET_MODE', mode: 'classic' })}
-            />
-            <ModeCard
-              tag="combo"
-              title="ADD-ON"
-              desc="The line grows. Every round you run it back, plus one."
-              active={state.mode === 'addon'}
-              onPress={() => dispatch({ type: 'SET_MODE', mode: 'addon' })}
+              fullWidth
+              tag="solo"
+              title="SEND-IT"
+              desc="No rounds, no score. Tap Next for a fresh random trick."
+              active={state.mode === 'sendit'}
+              onPress={() => dispatch({ type: 'SET_MODE', mode: 'sendit' })}
             />
           </View>
         </Section>
 
         <Section
-          num="03"
+          num={showRoster ? '03' : '02'}
           label="DIFFICULTY POOL"
           meta={`${poolCount} tricks`}
         >
@@ -117,11 +131,13 @@ export function SetupScreen() {
           </ChunkyBtn>
         </View>
 
-        <Text style={styles.footerNote}>
-          WORD TO SPELL:{' '}
-          <Text style={styles.footerWord}>{word.split('').join('·')}</Text>
-          {'   '}· {word.length} MISSES ELIMINATES
-        </Text>
+        {state.mode !== 'sendit' && (
+          <Text style={styles.footerNote}>
+            WORD TO SPELL:{' '}
+            <Text style={styles.footerWord}>{word.split('').join('·')}</Text>
+            {'   '}· {word.length} MISSES ELIMINATES
+          </Text>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -235,15 +251,17 @@ function ModeCard({
   desc,
   active,
   onPress,
+  fullWidth,
 }: {
   tag: string;
   title: string;
   desc: string;
   active: boolean;
   onPress: () => void;
+  fullWidth?: boolean;
 }) {
   return (
-    <View style={styles.modeCardWrap}>
+    <View style={[styles.modeCardWrap, fullWidth && styles.modeCardWrapFull]}>
       {/* lime offset shadow shows only when active */}
       {active && (
         <View
@@ -391,13 +409,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   // Mode
+  // Column: a 2-up row (Classic / Add-On) + a full-width Send-It card.
   modeGrid: {
+    gap: 8,
+  },
+  modeRow: {
     flexDirection: 'row',
     gap: 8,
   },
   modeCardWrap: {
     flex: 1,
     position: 'relative',
+  },
+  modeCardWrapFull: {
+    flex: 0,
   },
   modeCard: {
     backgroundColor: colors.paper2,

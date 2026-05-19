@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GameOverScreen } from './src/screens/GameOverScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { MatchScreen } from './src/screens/MatchScreen';
+import { SendItScreen } from './src/screens/SendItScreen';
 import { SetupScreen } from './src/screens/SetupScreen';
 import { TrickPicker } from './src/screens/TrickPicker';
 import { MatchProvider, useMatch } from './src/store/MatchContext';
@@ -23,6 +24,8 @@ function ActiveScreen() {
       return <SetupScreen />;
     case 'match':
       return <MatchScreen />;
+    case 'sendit':
+      return <SendItScreen />;
     case 'gameover':
       return <GameOverScreen />;
   }

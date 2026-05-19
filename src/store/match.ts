@@ -1,8 +1,8 @@
 import { filterTricksFor, getSport, type SportId } from '../data/sports';
 import { randomTrick, type Tier, type Trick } from '../data/tricks';
 
-export type Mode = 'classic' | 'addon';
-export type Screen = 'home' | 'setup' | 'match' | 'gameover';
+export type Mode = 'classic' | 'addon' | 'sendit';
+export type Screen = 'home' | 'setup' | 'match' | 'gameover' | 'sendit';
 export type Result = 'landed' | 'missed';
 
 export type Player = {
@@ -50,6 +50,7 @@ export type Action =
   | { type: 'TOGGLE_TIER'; tier: Tier }
   | { type: 'START_MATCH' }
   | { type: 'REROLL' }
+  | { type: 'NEXT_TRICK' }
   | { type: 'PICK_TRICK'; trick: Trick }
   | { type: 'OPEN_PICKER' }
   | { type: 'CLOSE_PICKER' }
@@ -133,7 +134,8 @@ export function reducer(s: State, a: Action): State {
       const first = randomTrick(pool);
       return {
         ...s,
-        screen: 'match',
+        // Send-It is a solo trick generator on its own screen.
+        screen: s.mode === 'sendit' ? 'sendit' : 'match',
         sportLocked: true,
         currentTrick: first,
         combo: [],
@@ -161,6 +163,12 @@ export function reducer(s: State, a: Action): State {
         responses: {},
         rerollsThisRound: s.rerollsThisRound + 1,
       };
+    }
+
+    case 'NEXT_TRICK': {
+      // Send-It mode — roll a fresh random trick, never repeating the current.
+      const pool = filterTricksFor(s.sportId, s.tiers);
+      return { ...s, currentTrick: randomTrick(pool, s.currentTrick?.name) };
     }
 
     case 'PICK_TRICK':

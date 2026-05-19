@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { Player, Result } from '../store/match';
+import type { Mode, Player, Result } from '../store/match';
 import { useMatch, useSport } from '../store/MatchContext';
 import { colors, fonts } from '../theme/tokens';
 import { BigStamp } from '../ui/BigStamp';
@@ -552,7 +552,7 @@ function RrBtn({
 // SetFailedBanner & EliminatedRow
 // ═══════════════════════════════════════════════════════════════════════
 
-function SetFailedBanner({ mode }: { mode: 'classic' | 'addon' }) {
+function SetFailedBanner({ mode }: { mode: Mode }) {
   return (
     <View style={styles.setFailed}>
       <BigStamp text="SET FAIL" size={18} rotate={-6} borderWidth={2.5} />

@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { Player } from '../store/match';
+import type { Mode, Player } from '../store/match';
 import { useMatch, useSport } from '../store/MatchContext';
 import { colors, fonts } from '../theme/tokens';
 import { ChunkyBtn } from '../ui/ChunkyBtn';
@@ -110,7 +110,7 @@ function WinnerCard({
 }: {
   winner: Player | null;
   rounds: number;
-  mode: 'classic' | 'addon';
+  mode: Mode;
 }) {
   return (
     <View style={styles.wcWrap}>
