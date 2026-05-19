@@ -67,7 +67,11 @@ export function MatchScreen() {
   const confirmExit = () => {
     Alert.alert('End match?', 'Your progress will be lost.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'End match', style: 'destructive', onPress: () => dispatch({ type: 'HOME' }) },
+      {
+        text: 'End match',
+        style: 'destructive',
+        onPress: () => dispatch({ type: 'EXIT_TO_SETUP' }),
+      },
     ]);
   };
 

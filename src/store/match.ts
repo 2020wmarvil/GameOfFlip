@@ -61,6 +61,7 @@ export type Action =
   | { type: 'NEXT_ROUND' }
   | { type: 'REMATCH' }
   | { type: 'HOME' }
+  | { type: 'EXIT_TO_SETUP' }
   | { type: 'HYDRATE'; state: State };
 
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -312,6 +313,21 @@ export function reducer(s: State, a: Action): State {
         players: s.players,
         sportId: s.sportId,
         senditTimer: s.senditTimer,
+      };
+
+    case 'EXIT_TO_SETUP':
+      // Bail out of a match (or Send-It session, or Game Over) back to
+      // Setup. Clears in-progress match state and unlocks the sport, but
+      // keeps the roster, sport, mode, tiers, and timer preference — so
+      // the user can tweak Setup and run another match without redoing it.
+      return {
+        ...initialState,
+        screen: 'setup',
+        players: s.players,
+        sportId: s.sportId,
+        senditTimer: s.senditTimer,
+        mode: s.mode,
+        tiers: s.tiers,
       };
 
     case 'HYDRATE':

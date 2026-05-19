@@ -54,7 +54,7 @@ export function SendItScreen() {
       <View style={styles.header}>
         <Pressable
           style={styles.back}
-          onPress={() => dispatch({ type: 'HOME' })}
+          onPress={() => dispatch({ type: 'EXIT_TO_SETUP' })}
           hitSlop={8}
         >
           <BackIcon size={18} color={colors.ink} />

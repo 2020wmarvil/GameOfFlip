@@ -32,7 +32,7 @@ function useHardwareBack() {
           return true;
         case 'sendit':
         case 'gameover':
-          dispatch({ type: 'HOME' });
+          dispatch({ type: 'EXIT_TO_SETUP' });
           return true;
         case 'match':
           Alert.alert('End match?', 'Your progress will be lost.', [
@@ -40,7 +40,7 @@ function useHardwareBack() {
             {
               text: 'End match',
               style: 'destructive',
-              onPress: () => dispatch({ type: 'HOME' }),
+              onPress: () => dispatch({ type: 'EXIT_TO_SETUP' }),
             },
           ]);
           return true;
